@@ -1,0 +1,51 @@
+Ah, that is very different. So you test case becomes:
+
+- Go to http://www.amazon.in/
+- Select the first option
+- Search for keyword
+- Select the second option
+- Search for keyword
+- ...
+- Select the last option
+- Search for keyword
+
+Where ... is repeat for all the options on the select. As a programmer I look at this list of requirements and think, this could be converted into a loop. So I'm going to rework the requirements to be:
+
+- Go to http://www.amazon.in/
+- Get a list of the options available
+- For each option:
+    - Select the 'next' option
+    - Search for keyword
+
+If I write this as:
+
+        String keyword = "Selenium";
+        driver.get("http://www.amazon.in/");
+        Select s = new Select(driver.findElement(By.cssSelector("#nav-searchbar select")));
+        List<WebElement> options = s.getOptions();
+        for(WebElement option : options) {
+            option.click();
+            driver.findElement(By.cssSelector("#twotabsearchtextbox")).sendKeys(keyword);
+            driver.findElement(By.cssSelector("[value='Go']")).click();
+        }
+
+It looks like I'm done but when you run this you will find that selecting the second option throws an error. The moment you search for the first option it reloads the page. The reload of the page makes all List of WebElement go stale. So when you try to access the second option the loop fails. So you cannot loop on the WebElement. You need to figure out how to select the different options using Java data types and not WebElement data types. Essentially, you need to locate the options inside the loop, save the locator then use a second loop to loop over the locator strings:
+
+        String keyword = "Selenium";
+        driver.get("http://www.amazon.in/");
+        Select s = new Select(driver.findElement(By.cssSelector("#nav-searchbar select")));
+        List<WebElement> options = s.getOptions();
+        List<String> optionsLocators = new ArrayList<>();
+
+        // get the locators into a List of String
+        for(WebElement option : options) {
+            optionsLocators.add(String.format("#searchDropdownBox>option[value='%s']", option.getAttribute("value")));
+        }
+
+        // loop over the List of String because the WebElement will go stale
+        driver.findElement(By.cssSelector("#twotabsearchtextbox")).sendKeys(keyword);
+        for(String optionLocator : optionsLocators) {
+            WebElement option = driver.findElement(By.cssSelector(optionLocator));
+            option.click();
+            driver.findElement(By.cssSelector("[value='Go']")).click();
+        }
